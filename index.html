@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-roboto">
+    <header class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">YouTube Video Downloader</h1>
+            <nav>
+                <ul class="flex space-x-4">
+                    <li><a href="#" class="hover:underline">Home</a></li>
+                    <li><a href="#" class="hover:underline">Features</a></li>
+                    <li><a href="#" class="hover:underline">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto mt-10 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Download YouTube Videos Easily</h2>
+            <form id="downloadForm" class="space-y-4">
+                <div>
+                    <label for="url" class="block text-gray-700">YouTube Video URL</label>
+                    <input type="text" id="url" name="url" class="w-full p-2 border border-gray-300 rounded mt-1" placeholder="Enter YouTube video URL">
+                </div>
+                <div>
+                    <label for="format" class="block text-gray-700">Select Format</label>
+                    <select id="format" name="format" class="w-full p-2 border border-gray-300 rounded mt-1">
+                        <option value="mp4">MP4</option>
+                        <option value="mp3">MP3</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Download</button>
+            </form>
+            <div id="loadingIndicator" class="hidden text-blue-600 text-center mt-4">
+                <i class="fas fa-spinner fa-spin"></i> Downloading...
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 mt-10">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2025 YouTube Video Downloader. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('downloadForm');
+            const urlInput = document.getElementById('url');
+            const formatSelect = document.getElementById('format');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const urlValue = urlInput.value.trim();
+                const formatValue = formatSelect.value;
+
+                if (!isValidYouTubeURL(urlValue)) {
+                    alert('Please enter a valid YouTube URL.');
+                    return;
+                }
+
+                loadingIndicator.classList.remove('hidden');
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: urlValue, format: formatValue }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `download.${formatValue}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                }
+            });
+
+            function isValidYouTubeURL(url) {
+                const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/watch\?v=.+$/;
+                return regex.test(url);
+            }
+        });
+    </script>
+</body>
+</html>

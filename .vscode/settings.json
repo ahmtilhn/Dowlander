@@ -1,0 +1,6 @@
+{
+    "terminal.integrated.env.windows": {},
+    "python.analysis.exclude": [
+        "C:\\Users\\ahmet\\OneDrive\\Desktop\\ffmpeg\\bin"
+    ]
+}
