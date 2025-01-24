@@ -29,7 +29,7 @@
             <form id="downloadForm" class="space-y-4">
                 <div>
                     <label for="url" class="block text-gray-700">YouTube Video URL</label>
-                    <input type="text" id="url" name="url" class="w-full p-2 border border-gray-300 rounded mt-1" placeholder="Enter YouTube video URL">
+                    <input type="text" id="url" name="url" class="w-full p-2 border border-gray-300 rounded mt-1" placeholder="Enter YouTube video or Shorts URL">
                 </div>
                 <div>
                     <label for="format" class="block text-gray-700">Select Format</label>
@@ -40,8 +40,26 @@
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Download</button>
             </form>
+
+            <!-- Loading Indicator -->
             <div id="loadingIndicator" class="hidden text-blue-600 text-center mt-4">
                 <i class="fas fa-spinner fa-spin"></i> Downloading...
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full mt-4">
+                <div id="progressBar" class="bg-gray-300 w-full h-4 rounded">
+                    <div id="progressBarFilled" class="bg-blue-600 h-4 rounded" style="width: 0%"></div>
+                </div>
+                <div id="percentage" class="text-center text-blue-600 mt-2">0%</div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden text-red-600 mt-4 font-bold"></div>
+
+            <!-- Download Link -->
+            <div id="downloadLink" class="hidden text-green-600 mt-4">
+                <a href="#" id="downloadHref" target="_blank" class="underline">Download your file here</a>
             </div>
         </div>
     </main>
@@ -58,46 +76,68 @@
             const urlInput = document.getElementById('url');
             const formatSelect = document.getElementById('format');
             const loadingIndicator = document.getElementById('loadingIndicator');
-
+            const progressBarFilled = document.getElementById('progressBarFilled');
+            const percentage = document.getElementById('percentage');
+            const downloadLinkDiv = document.getElementById('downloadLink');
+            const downloadHref = document.getElementById('downloadHref');
+            const errorMessage = document.getElementById('errorMessage');
+    
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const urlValue = urlInput.value.trim();
                 const formatValue = formatSelect.value;
-
+    
                 if (!isValidYouTubeURL(urlValue)) {
-                    alert('Please enter a valid YouTube URL.');
+                    errorMessage.textContent = 'Please enter a valid YouTube URL or Shorts URL.';
+                    errorMessage.classList.remove('hidden');
                     return;
                 }
 
+                errorMessage.classList.add('hidden');
                 loadingIndicator.classList.remove('hidden');
+                percentage.innerText = '0%';
+                progressBarFilled.style.width = '0%';
+    
                 try {
                     const response = await fetch('http://127.0.0.1:5000/download', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: urlValue, format: formatValue }),
                     });
-
+    
                     if (!response.ok) {
                         throw new Error(await response.text());
                     }
+    
+                    const data = await response.json();
+                    const fileName = data.file_name;
+    
+                    // Polling for progress
+                    const interval = setInterval(async () => {
+                        const progressResponse = await fetch('http://127.0.0.1:5000/progress');
+                        const progressData = await progressResponse.json();
+                        const progress = progressData.current || 0;
+                        progressBarFilled.style.width = `${progress}%`;
+                        percentage.innerText = `${progress}%`;
 
-                    const blob = await response.blob();
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = `download.${formatValue}`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                        if (progress === 100) {
+                            clearInterval(interval);
+                            // Show the download link after the video is fully downloaded
+                            downloadLinkDiv.classList.remove('hidden');
+                            downloadHref.href = `http://127.0.0.1:5000/download_file?file=${encodeURIComponent(fileName)}`;
+                        }
+                    }, 1000); // Update every 1 second
+
                 } catch (error) {
-                    alert(`Error: ${error.message}`);
+                    errorMessage.textContent = `Error: ${error.message}`;
+                    errorMessage.classList.remove('hidden');
                 } finally {
                     loadingIndicator.classList.add('hidden');
                 }
             });
-
+    
             function isValidYouTubeURL(url) {
-                const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/watch\?v=.+$/;
+                const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(shorts\/.+|watch\?v=.+)$/;
                 return regex.test(url);
             }
         });
